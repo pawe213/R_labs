@@ -11,7 +11,19 @@ zamodelowac cos przy uzyciu lancuchów markowa
 paradoks montyhola ll
 
 Zajecia 07.12.2019
-projekt do skonczenia do lutego
+
+TODO:
+
+-doczytać estymacja punktowa
+-rozklad dwumianowy
+-rozklad geometryczny
+-rozklad ujemny dwumianowy (pascala)
+-rozklad płasona?
+-brak pamieci
+-dystrybułanta
+-prawo wielkich liczb
+
+-projekt do skonczenia do lutego
 z 4 cześci
 1. znalezienia danych
 2. dane w bazie np. sqllite
