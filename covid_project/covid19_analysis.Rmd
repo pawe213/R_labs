@@ -1,0 +1,101 @@
+---
+title: "SARS-CoV-2 epidemic analysis"
+output: html_notebook
+---
+
+```{r}
+library(dplyr)
+library(rworldmap)
+library(plotly)
+library(plyr)
+library(ggplot2)
+```
+# load data ---------------------------------------------------------------
+```{r}
+df <- read.csv("COVID19_open_line_list.csv", as.is = TRUE) 
+#names(df)[1] <- 'ID'
+```
+
+# clean data --------------------------------------------------------------
+```{r}
+columns = c(1:9, 11, 24, 25)
+df <- df[,  columns]
+df[is.na(df['age']), 2] = 'N/A'
+df[(df[2] == '') | (df[2] == 'N/A') , 2] = NA
+df_d = df[(df['outcome'] == 'died') | (df['outcome'] == 'death'),] # filter deaths
+
+```
+
+```{r warning=FALSE}
+print(unique(df$outcome))
+#format to numeric
+df$age <- as.numeric(df$age)
+df_d$age <- as.numeric(df_d$age)
+
+# write date to sql
+library(DBI)
+# Create an ephemeral in-memory RSQLite database
+con <- dbConnect(RSQLite::SQLite(), ":memory:")
+table_for_db = as.table(df$age)
+dbWriteTable(con, 'main db', df)
+dbListTables(con)
+dbDisconnect(con)
+```
+
+# plot on map -------------------------------------------------------------
+```{r warning=FALSE}
+plot_on_map <- function(df){
+  new_map <- getMap(resolution = "low")
+  plot(new_map)
+  plot(new_map, xlim = c(-20, 59), ylim = c(35, 71), asp = 1) # only europe
+  points(df$longitude, df$latitude, col= "red", cex = .6)
+}
+
+# plot all cases on map
+plot_on_map(df)
+
+## plot deaths on map
+plot_on_map(df_d)
+```
+
+# analysis base factors ---------------------------------------------------
+```{r}
+# all
+age = df[!is.na(df$age), 2]
+median(age)
+fivenum(age)
+boxplot(age, data = age)
+
+#death
+age_d = df_d[!is.na(df_d$age), 2]
+cat('age mediane', median(age_d))
+cat('print minimum, lower-hinge, median, upper-hinge, maximum', fivenum(age_d))
+boxplot(age_d, data = age_d)
+fig <- plot_ly(y= age_d, type = "box")
+fig <- fig%>% add_trace(y = age)
+```
+# analysis daily factors ---------------------------------------------------
+```{r message=FALSE, warning=FALSE}
+#daily cases
+df_daily = df
+df_daily[df_daily == ""] = NA
+
+
+df_daily$date_onset_symptoms = as.Date(df_daily$date_onset_symptoms, tryFormat = ("%d.%m.%Y"))
+start_date = as.Date("10.12.2019", tryFormat = ("%d.%m.%Y"))
+
+for (i in 1:length(df_daily$date_onset_symptoms)){
+  if (is.na(df_daily$date_onset_symptoms[i])){
+    next
+  }
+  if (df_daily$date_onset_symptoms[i] < start_date){
+    df_daily$date_onset_symptoms[i] = NA
+  }
+}
+
+ggplot(df_daily, aes(date_onset_symptoms))+ 
+  geom_density(alpha = 0.2) +scale_x_date()
+
+ggplot(df_daily, aes(date_onset_symptoms, fill = 'amount_per_day' )) + 
+  geom_histogram() +scale_x_date(name = 'date') + guides(fill=guide_legend(title=NULL))
+```
